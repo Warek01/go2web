@@ -1,30 +1,43 @@
-﻿namespace TumWebLab5.Models;
+﻿namespace Go2Web.Models;
 
 public class HttpCache {
-  public class Entry {
-    public string   Url       { get; }
-    public string   Value     { get; }
-    
-    // TODO: timeout mechanism
-    // public DateTime CreatedAt { get; }
-    // public TimeSpan TTL   { get; }
-    // public bool     IsValid   { get; set; }
+  private readonly string _cacheDirectory;
 
-    public Entry(string url, string value) {
-      Url   = url;
-      Value = value;
-    }
+  public HttpCache(string cacheDirectory) {
+    _cacheDirectory = cacheDirectory;
+
+    if (!Directory.Exists(cacheDirectory))
+      Directory.CreateDirectory(cacheDirectory);
   }
 
-  private readonly List<Entry> _entries = new();
+  public void Add(Uri uri, string content) {
+    string path = Uri.EscapeDataString(uri.GetLeftPart(UriPartial.Path));
 
-  public HttpCache() { }
-
-  public void Add(Entry entry) {
-    _entries.Add(entry);
+    File.WriteAllText(
+      Path.Combine(_cacheDirectory, path),
+      content,
+      Config.GlobalEncoding
+    );
   }
 
-  public string? Get(string url) {
-    return _entries.Find(e => e.Url == url)?.Value;
+  public string? Get(Uri uri) {
+    string path = Path.Combine(_cacheDirectory,
+      Uri.EscapeDataString(uri.GetLeftPart(UriPartial.Path)));
+
+    return File.Exists(path)
+      ? File.ReadAllText(
+        path,
+        Config.GlobalEncoding
+      )
+      : null;
+  }
+
+  public int Clear() {
+    if (!Directory.Exists(_cacheDirectory)) return 0;
+
+    int count = Directory.GetFiles(_cacheDirectory).Length;
+    Directory.Delete(_cacheDirectory, true);
+    Directory.CreateDirectory(_cacheDirectory);
+    return count;
   }
 }
